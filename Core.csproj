@@ -53,7 +53,7 @@
     <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="8.0.0" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Idata\Idata.csproj" />
-    <ProjectReference Include="..\Ihelpers\Ihelpers.csproj" />
+    <ProjectReference Include="..\Idata-module\Idata.csproj" />
+    <ProjectReference Include="..\helpers-module\Ihelpers.csproj" />
   </ItemGroup>
 </Project>

@@ -1,6 +1,5 @@
 ﻿using Core.Exceptions;
 using Core.Services.Interfaces;
-using Idata.Data.Entities.Ramp;
 using Ihelpers.Helpers;
 using System;
 using System.Net.Http.Headers;

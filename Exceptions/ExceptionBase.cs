@@ -1,7 +1,7 @@
 ﻿using Ihelpers.Helpers;
 using Core.Logger;
 using Newtonsoft.Json;
-using Idata.Data.Entities.Ireport;
+
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.Azure;
 

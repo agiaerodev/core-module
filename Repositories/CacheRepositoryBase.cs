@@ -1,7 +1,6 @@
 ﻿using Core.Factory;
 using Core.Interfaces;
 using Hangfire.Common;
-using Idata.Data.Entities.Iflight;
 using Idata.Entities.Core;
 using Ihelpers.Helpers;
 using Ihelpers.Interfaces;

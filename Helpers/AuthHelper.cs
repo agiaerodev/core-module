@@ -1,10 +1,11 @@
-﻿using Idata.Data.Entities.Iprofile;
-using Idata.Data;
-using Ihelpers.Helpers;
-using Core.Repositories;
-using Core.Factory;
+﻿using Core.Factory;
 using Core.Interfaces;
+using Core.Repositories;
+using Idata.Data;
+using Idata.Data.Entities.Iprofile;
+using Ihelpers.Helpers;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 
 namespace Core.Helpers
 {
@@ -105,6 +106,15 @@ namespace Core.Helpers
                 return null;
             }
         }
-
+        public static SymmetricSecurityKey ExtendKeyLengthIfNeeded(SymmetricSecurityKey key, int minLenInBytes)
+        {
+            if (key != null && key.KeySize < (minLenInBytes * 8))
+            {
+                var newKey = new byte[minLenInBytes]; // zeros by default
+                key.Key.CopyTo(newKey, 0);
+                return new SymmetricSecurityKey(newKey);
+            }
+            return key;
+        }
     }
 }

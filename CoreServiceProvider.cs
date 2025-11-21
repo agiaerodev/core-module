@@ -79,17 +79,19 @@ namespace Core
 
             }
 
-            //Messaging between modules
-            builder.Services.AddSingleton<IMessageProvider, AzureServiceBus>();
+            //Messaging between modules DEFAULT
+            builder.Services.AddSingleton<IMessageProvider, MessageProvider>();
 
-            builder.Services.AddScoped<IStorageBase, AzureStorageBase>();
+
+            //File report storage DEFAULT
+            builder.Services.AddScoped<IStorageBase, DefaultStorage>();
 
             // Add token black list handling services
             builder.Services.AddTransient<TokenManagerMiddleware>();
             builder.Services.AddTransient<ITokenManager, DatabaseJsonWebTokenManager>();
 
             // Get the connection string from the configuration
-            var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+            var connectionString = ConfigurationHelper.GetConfig("ConnectionStrings:DefaultConnection");
 
             // Add Hangfire service with specified options
             builder.Services.AddHangfire(configuration => configuration

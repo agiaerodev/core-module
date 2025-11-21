@@ -25,7 +25,6 @@ using Ihelpers.Helpers.Interfaces;
 using Idata.Data;
 using Microsoft.EntityFrameworkCore;
 using Idata.Entities.Core;
-using Idata.Entities.Isite;
 using System.Reflection;
 using Ihelpers.Caching.Interfaces;
 using Ihelpers.Extensions;
@@ -35,8 +34,8 @@ using Core.Factory;
 using Microsoft.Extensions.Azure;
 using static Azure.Core.HttpHeader;
 using Core.Validators;
-using Idata.Data.Entities.Ramp;
-using Idata.Entities.Quickbase;
+using Idata.Entities.Isite;
+
 
 namespace Core.Repositories
 {
