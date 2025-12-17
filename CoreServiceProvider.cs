@@ -84,7 +84,7 @@ namespace Core
 
 
             //File report storage DEFAULT
-            builder.Services.AddScoped<IStorageBase, DefaultStorage>();
+            builder.Services.AddScoped<IStorageBase, AzureStorageBase>();
 
             // Add token black list handling services
             builder.Services.AddTransient<TokenManagerMiddleware>();

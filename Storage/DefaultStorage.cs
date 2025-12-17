@@ -18,6 +18,13 @@ namespace Core.Storage
             return null;
         }
 
+        public Task<List<Dictionary<string, object>>> GetAllUserFiles(string userId, UrlRequestBase requestBase)
+        {
+            Core.Logger.CoreLogger.LogMessage($"Default storage used for GetAllUserFiles user '{userId}'", logType: Ihelpers.Helpers.LogType.Warning);
+
+            return null;
+        }
+
         public async Task<Dictionary<string, object>?> ReadFile(string fileName)
         {
             Core.Logger.CoreLogger.LogMessage($"Default storage used for read file '{fileName}'", logType: Ihelpers.Helpers.LogType.Warning);
@@ -25,11 +32,14 @@ namespace Core.Storage
             return null;
         }
 
+
         public async Task<bool> RemoveFile(string fileName)
         {
             Core.Logger.CoreLogger.LogMessage($"Default storage used for store file '{fileName}'", logType: Ihelpers.Helpers.LogType.Warning);
 
             return true;
         }
+
+     
     }
 }
