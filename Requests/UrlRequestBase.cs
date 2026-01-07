@@ -412,6 +412,10 @@ namespace Core
                                 permission += ".restore";
                                 userActionName = "restore";
                                 break;
+                            case "order":
+                                permission += ".order";
+                                userActionName = "order";
+                                break;
                             case "export":
                                 permission += ".export";
                                 userActionName = "export";
