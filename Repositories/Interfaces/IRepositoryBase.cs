@@ -38,6 +38,17 @@ namespace Core.Interfaces
         /// <returns>The item that was updated in the repository.</returns>
         public Task<object> UpdateBy(UrlRequestBase? requestBase, BodyRequestBase? bodyRequestBase);
 
+
+        /// <summary>
+        /// Bulk-updates the ordering field for many entities in a single transaction.
+        /// The frontend sends a list of { id, order } pairs; this method updates each entity accordingly.
+        /// </summary>
+        /// <param name="requestBase">Standard request that holds filters for this method</param>
+        /// <param name="bodyRequestBase">Standard request that holds ordering payload inside _attributes</param>
+        /// <returns>Returns a summary object (updated count, ids), or throws ExceptionBase on failures</returns>
+        public Task<object?> OrderBy(UrlRequestBase? requestBase, BodyRequestBase? bodyRequestBase);
+
+
         /// <summary>
         /// Deletes an existing item in the repository, based on the given request.
         /// </summary>
@@ -96,6 +107,15 @@ namespace Core.Interfaces
         /// <param name="bodyRequestBase">The base request body that contains information about the request body.</param>
         /// <returns>The updated entity of type `TEntity`.</returns>
         public Task<TEntity?> UpdateBy(UrlRequestBase? requestBase, BodyRequestBase? bodyRequestBase);
+
+        /// <summary>
+        /// Bulk-updates the ordering field for many entities in a single transaction.
+        /// The frontend sends a list of { id, order } pairs; this method updates each entity accordingly.
+        /// </summary>
+        /// <param name="requestBase">Standard request that holds filters for this method</param>
+        /// <param name="bodyRequestBase">Standard request that holds ordering payload inside _attributes</param>
+        /// <returns>Returns a summary object (updated count, ids), or throws ExceptionBase on failures</returns>
+        public Task<object?> OrderBy(UrlRequestBase? requestBase, BodyRequestBase? bodyRequestBase);
 
         /// <summary>
         /// Deletes an entity.
