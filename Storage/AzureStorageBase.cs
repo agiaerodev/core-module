@@ -24,7 +24,7 @@ namespace Core.Storage
         /// <summary>
         /// The configuration key for the default connection string for the Azure Blob Storage.
         /// </summary>
-        const string ConfigKey = "AzureBlobStorage:DefaultConnection";
+        const string ConfigKey = "BlobStorage:DefaultConnection";
 
   
 
@@ -36,11 +36,11 @@ namespace Core.Storage
         {
 
 
-            var tenantId = ConfigurationHelper.GetConfig("AzureBlobStorage:TenantId", useCache: true);
-            var clientId = ConfigurationHelper.GetConfig("AzureBlobStorage:ClientId", useCache: true);
-            var clientSecret = ConfigurationHelper.GetConfig("AzureBlobStorage:ClientSecret", useCache: true);
-            var containerName = ConfigurationHelper.GetConfig("AzureBlobStorage:ContainerName", useCache: true);
-            var accountName = ConfigurationHelper.GetConfig("AzureBlobStorage:AccountName", useCache: true);
+            var tenantId = ConfigurationHelper.GetConfig("BlobStorage:TenantId", useCache: true);
+            var clientId = ConfigurationHelper.GetConfig("BlobStorage:ClientId", useCache: true);
+            var clientSecret = ConfigurationHelper.GetConfig("BlobStorage:ClientSecret", useCache: true);
+            var containerName = ConfigurationHelper.GetConfig("BlobStorage:ContainerName", useCache: true);
+            var accountName = ConfigurationHelper.GetConfig("BlobStorage:AccountName", useCache: true);
 
 
 
