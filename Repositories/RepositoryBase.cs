@@ -358,19 +358,40 @@ namespace Core.Repositories
                 else if(fileFormat == "pdf")
                 {
 
-                    //CONVERT RESULTS TO FIRST LVL 
-                    var transformedItems = await TransformerBase.TransformCollection(resultList);
-
-                    var pathFields = resultList.GetPropertiesPath();
-                    
-                    //Add all non relation properties to pathfields
-
-                    string result = await TransformerBase.GetCSVReport<TEntity>(transformedItems, pathFields);
+             
 
                     #region PDF
-                    //PDF par
-                    var html = await RazorTemplateEngine.RenderAsync("~/CSVReport/CSVReport.cshtml", result);
+                    string viewToRender = !string.IsNullOrEmpty(requestBase.reportViewPath)
+                      ? requestBase.reportViewPath
+                      : "~/Views/CSVReport.cshtml";
 
+                    object? customViewModel = await GetCustomReportViewModel(resultList, requestBase);
+
+
+
+                    string html = string.Empty;
+                    //PDF par
+
+                    if (customViewModel != null)
+                    {
+                      
+                        html = await RazorTemplateEngine.RenderAsync(viewToRender, customViewModel);
+                    }
+                    else
+                    {
+                        //CONVERT RESULTS TO FIRST LVL 
+                        var transformedItems = await TransformerBase.TransformCollection(resultList);
+
+                        var pathFields = resultList.GetPropertiesPath();
+
+                        //Add all non relation properties to pathfields
+
+                        string result = await TransformerBase.GetCSVReport<TEntity>(transformedItems, pathFields);
+
+                        html = await RazorTemplateEngine.RenderAsync(viewToRender, result);
+                    }
+
+           
 
 					int ammountItems = resultList.Count();
 
@@ -421,18 +442,43 @@ namespace Core.Repositories
                 }
                 else
                 {
-					//CONVERT RESULTS TO FIRST LVL 
-					var transformedItems = await TransformerBase.TransformCollection(resultList);
+                    object? customViewModel = await GetCustomReportViewModel(resultList, requestBase);
 
-					var pathFields = resultList.GetPropertiesPath();
+				
+                    #region EXCEL
+                    //EXCEL part
+                    string viewToRender = !string.IsNullOrEmpty(requestBase.reportViewPath)
+                   ? requestBase.reportViewPath
+                   : "~/Views/CSVReport.cshtml";
 
-					//Add all non relation properties to pathfields
 
-					string result = await TransformerBase.GetCSVReport<TEntity>(transformedItems, pathFields);
 
-					#region EXCEL
-					//EXCEL part
-					var html = await RazorTemplateEngine.RenderAsync("~/CSVReport/CSVReport.cshtml", result);
+                    string html = string.Empty;
+
+
+                    //PDF par
+
+                    if (customViewModel != null)
+                    {
+
+                        html = await RazorTemplateEngine.RenderAsync(viewToRender, customViewModel);
+                    }
+                    else
+                    {
+                        //CONVERT RESULTS TO FIRST LVL 
+                        var transformedItems = await TransformerBase.TransformCollection(resultList);
+
+                        var pathFields = resultList.GetPropertiesPath();
+
+                        //Add all non relation properties to pathfields
+
+                        string result = await TransformerBase.GetCSVReport<TEntity>(transformedItems, pathFields);
+
+                        html = await RazorTemplateEngine.RenderAsync(viewToRender, result);
+                    }
+
+
+
                     //Extract only the table HTML
                     string table = html.Split("<body>").Last().Split("</body>").First().Trim();
 
@@ -493,6 +539,15 @@ namespace Core.Repositories
                 ExceptionBase.HandleException(ex, $"Error obtaining list of {typeof(TEntity).Name}", $"ExceptionMessage = {(ex is ExceptionBase ? ((ExceptionBase)ex).CustomMessage : ex.Message)}   trace received: " + JsonConvert.SerializeObject(requestBase, jsonSerializerSettings).Trim().Replace("\"", "'"));
             }
 
+        }
+
+        /// <summary>
+        /// Allows to child repositories to provide a custom view model for report generation.
+        /// If null, the default model will be used.
+        /// </summary>
+        protected virtual async Task<object?> GetCustomReportViewModel(List<TEntity?> resultList, UrlRequestBase requestBase)
+        {
+            return await Task.FromResult<object?>(null);
         }
 
         /// <summary>

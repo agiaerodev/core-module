@@ -72,6 +72,13 @@ namespace Core
         public string? procedureName { get; set; } = "";
 
         /// <summary>
+        /// A property to store the view path for custom reports
+        /// </summary>
+        /// 
+        [BindNever]
+        public string? reportViewPath { get; private set; } = null;
+
+        /// <summary>
         /// A property to store the ordering field, used inside reports module.
         /// </summary>
         [BindNever]
