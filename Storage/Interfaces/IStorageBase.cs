@@ -13,14 +13,7 @@
         /// <returns>A task that represents the asynchronous operation.</returns>
         Task<string> CreateFile(string fileName, Stream fileStream, UrlRequestBase request);
 
-        /// <summary>
-        /// Reads the contents of a file with the given name.
-        /// </summary>
-        /// <param name="fileName">The name of the file to be read.</param>
-        /// <returns>A task that represents the asynchronous operation,
-        /// and returns the contents of the file as a dictionary of key-value pairs.</returns>
-        Task<Dictionary<string, object>?> ReadFile(string fileName);
-
+   
         /// <summary>
         /// Downloads a file with the given name.
         /// </summary>
@@ -30,5 +23,8 @@
         Task<Stream?> DownloadFile(string fileName);
 
         Task<bool> RemoveFile(string fileName);
+
+
+        Task<List<Dictionary<string, object>>> GetAllUserFiles(string userId, UrlRequestBase requestBase);
     }
 }

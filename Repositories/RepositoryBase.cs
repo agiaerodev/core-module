@@ -251,7 +251,6 @@ namespace Core.Repositories
 
             _classHelper = new ClassHelper<TEntity>();
 
-            _storageBase = new AzureStorageBase();
 
             try
             {
