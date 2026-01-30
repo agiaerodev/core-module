@@ -6,8 +6,7 @@ using Core.Interfaces;
 using Core.Middleware.TokenManager.Interfaces;
 using Core.Repositories;
 using Core.Services;
-using Core.Services;
-using Core.Services.Interfaces;
+
 using Core.Services.Interfaces;
 using Core.Storage;
 using Core.Storage.Interfaces;
@@ -81,12 +80,10 @@ namespace Core
 
             }
 
-            //Messaging between modules DEFAULT
-            builder.Services.AddSingleton<IMessageProvider, AzureServiceBus>();
+            //Messaging between modules
+            builder.Services.AddSingleton<IMessageProvider, MessageProvider>();
 
-
-            //File report storage DEFAULT
-            builder.Services.AddScoped<IStorageBase, AzureStorageBase>();
+            builder.Services.AddScoped<IStorageBase, MediaStorage>();
 
             // Add token black list handling services
             builder.Services.AddTransient<TokenManagerMiddleware>();

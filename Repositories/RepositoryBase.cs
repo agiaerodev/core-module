@@ -250,7 +250,7 @@ namespace Core.Repositories
 
 
             _classHelper = new ClassHelper<TEntity>();
-
+            _storageBase = new MediaStorage(this._dataContext);
 
             try
             {
@@ -506,15 +506,35 @@ namespace Core.Repositories
                     });
 
                     #endregion
-
+                    fileName = fileName += $".{fileFormat}";
                     //Upload the file to storage handler
-                    fileUrl = await _storageBase.CreateFile("testing.xlsx", generatedPdf.Content, requestBase);
+                    fileUrl = await _storageBase.CreateFile(fileName, generatedPdf.Content, requestBase);
 
                 }
 
                 if (fileFormat == "csv" && !string.IsNullOrEmpty(fileUrl))
                 {
-                    fileUrl = await _dependenciesContainer._reportingService.GenerateExcelFile(fileUrl);
+                    string newFileUrl = await _dependenciesContainer._reportingService.GenerateExcelFile(fileUrl, requestBase);
+
+                    if (fileUrl != newFileUrl)
+                    {
+                        UrlRequestBase deleteRequest = new UrlRequestBase();
+
+                        deleteRequest.CreateFilter("field", "public_key");
+                        deleteRequest.currentContextToken = requestBase.currentContextToken;
+
+                        var uri = new Uri(fileUrl);
+
+                        // Toma el último segmento y quita la barra final si existe
+                        string publicKey = uri.Segments.Last().Trim('/');
+
+                        var updateResponse = await _storageBase.RemoveFile(publicKey, deleteRequest);
+
+                        if (updateResponse)
+                        {
+                            fileUrl = newFileUrl;
+                        }
+                    }
                 }
 
                 //Insert the creation log for  Entity

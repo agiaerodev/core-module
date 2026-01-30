@@ -1,8 +1,17 @@
-﻿using Core.Storage.Interfaces;
+﻿using Azure.Core;
+using Core.Storage.Interfaces;
 using Idata.Data;
 using Ihelpers.Helpers;
+
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using System.IO;
+using System.IO.Pipes;
+using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Text.Json.Nodes;
+using System.Text;
+
 
 namespace Core.Storage
 {
@@ -42,7 +51,8 @@ namespace Core.Storage
                     };
 
                     //Add the jsonToken to  the _hhtpClient
-                    _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", request.currentContextToken);
+                    if(!string.IsNullOrEmpty(request.currentContextToken))
+                        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", request.currentContextToken);
 
 
                     var jsonRequest = JsonConvert.SerializeObject(request, settings: serializeOptions);
@@ -135,10 +145,44 @@ namespace Core.Storage
         }
 
 
-        public Task<bool> RemoveFile(string fileName)
+        public async Task<bool> RemoveFile(string publicKey, UrlRequestBase request)
         {
             // Implementación opcional: Podría llamar a endpoint delete
-            throw new NotImplementedException();
+            try
+            {
+
+                bool response = false;
+
+                var uploadUrl = $"{_apiUrl}api/media/v1/files/{publicKey}{(string.IsNullOrEmpty(request.GetFilters()) ? "" : $"?filter={request.GetFilters().Trim()}")}";
+
+                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", request.currentContextToken);
+
+                var serializeOptions = new JsonSerializerSettings
+                {
+                    ReferenceLoopHandling = ReferenceLoopHandling.Ignore
+                };
+
+                var jsonRequest = JsonConvert.SerializeObject(request, settings: serializeOptions);
+
+
+
+
+                var updateResponse = await _httpClient.DeleteAsync(uploadUrl);
+
+                if (updateResponse.IsSuccessStatusCode)
+                {
+                    response = true;
+
+                    return response;
+                }
+
+                return response;
+            }
+            catch (Exception ex)
+            {
+                // Manejo básico de excepción para no romper el flujo inesperadamente
+                throw new Exception($"MediaStorage Upload Failed: {ex.Message}", ex);
+            }
         }
 
         public async Task<List<Dictionary<string, object>>> GetAllUserFiles(string userId, UrlRequestBase request)
@@ -183,6 +227,60 @@ namespace Core.Storage
                 // Manejo básico de excepción para no romper el flujo inesperadamente
                 throw new Exception($"MediaStorage Upload Failed: {ex.Message}", ex);
             }
+        }
+
+        public async Task<bool> UpdateFile(string fileName, UrlRequestBase request)
+        {
+            try
+            {
+
+                bool response = false;
+
+                var uploadUrl = $"{_apiUrl}api/media/v1/files/{fileName}{(string.IsNullOrEmpty(request.GetFilters()) ? "" : $"?filter={request.GetFilters().Trim()}")}";
+
+                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", request.currentContextToken);
+
+                var serializeOptions = new JsonSerializerSettings
+                {
+                    ReferenceLoopHandling = ReferenceLoopHandling.Ignore
+                };
+
+                var jsonRequest = JsonConvert.SerializeObject(request, settings: serializeOptions);
+
+                string newFileName = request.GetCustomFilter("newFileName");
+
+                var rawPayload = new
+                {
+                    attributes = new
+                    {
+                        name = newFileName,
+                        extension = Path.GetExtension(newFileName),
+                        path = $"/{request.GetCustomFilter("path").Split(".blob.core.windows.net/").Last()}"
+                    }
+                };
+
+             
+                var updateResponse = await _httpClient.PutAsJsonAsync(uploadUrl, rawPayload);
+
+                if (updateResponse.IsSuccessStatusCode) 
+                {
+                    response = true;
+
+                    return response;
+                }
+
+                return response;
+            }
+            catch (Exception ex)
+            {
+                // Manejo básico de excepción para no romper el flujo inesperadamente
+                throw new Exception($"MediaStorage Upload Failed: {ex.Message}", ex);
+            }
+        }
+
+        Task<bool> IStorageBase.RemoveFile(string fileName)
+        {
+            throw new NotImplementedException();
         }
     }
 }

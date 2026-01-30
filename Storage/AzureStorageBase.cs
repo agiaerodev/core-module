@@ -1,11 +1,8 @@
-﻿using Azure.Identity;
-using Azure.Storage.Blobs;
+﻿using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Core.Exceptions;
 using Core.Storage.Interfaces;
-using Idata.Data;
 using Ihelpers.Helpers;
-using Microsoft.EntityFrameworkCore;
 using System.Web;
 
 namespace Core.Storage
@@ -24,9 +21,12 @@ namespace Core.Storage
         /// <summary>
         /// The configuration key for the default connection string for the Azure Blob Storage.
         /// </summary>
-        const string ConfigKey = "BlobStorage:DefaultConnection";
+        const string ConfigKey = "AzureBlobStorage:DefaultConnection";
 
-  
+        /// <summary>
+        /// The name of the container in Azure Blob Storage.
+        /// </summary>
+        const string ContainerName = "agione";
 
         /// <summary>
         /// Creates a new instance of the `AzureStorageBase` class.
@@ -34,36 +34,26 @@ namespace Core.Storage
 
         public AzureStorageBase()
         {
+            // Get the default connection string from the configuration.
+            string? conString = ConfigurationHelper.GetConfig(ConfigKey);
 
+            // If the connection string is not found, throw an exception.
+            if (conString == null) throw new Exception($"AzureStorageBase configuration with key {0} was not found");
 
-            var tenantId = ConfigurationHelper.GetConfig("BlobStorage:TenantId", useCache: true);
-            var clientId = ConfigurationHelper.GetConfig("BlobStorage:ClientId", useCache: true);
-            var clientSecret = ConfigurationHelper.GetConfig("BlobStorage:ClientSecret", useCache: true);
-            var containerName = ConfigurationHelper.GetConfig("BlobStorage:ContainerName", useCache: true);
-            var accountName = ConfigurationHelper.GetConfig("BlobStorage:AccountName", useCache: true);
-
-
-
-            var credential = new ClientSecretCredential(tenantId, clientId, clientSecret);
-
-            var serviceUri = new Uri($"https://{accountName}.blob.core.windows.net");
-
-           
             BlobClientOptions options = new BlobClientOptions();
 
             options.Retry.NetworkTimeout = Timeout.InfiniteTimeSpan;
 
             // Create a `BlobServiceClient` using the connection string.
-            var blobServiceClient = new BlobServiceClient(serviceUri, credential);
+            blobServiceClient = new BlobServiceClient(conString, options: options);
 
             // Get the blob container client for the container with the specified name.
-            blobContainerClient = blobServiceClient.GetBlobContainerClient(containerName);
-
+            blobContainerClient = blobServiceClient.GetBlobContainerClient(ContainerName);
 
             // If the container does not exist, create it.
             if (!blobContainerClient.Exists())
             {
-                blobContainerClient = blobServiceClient.CreateBlobContainer(containerName);
+                blobContainerClient = blobServiceClient.CreateBlobContainer(ContainerName);
             }
         }
 
@@ -104,7 +94,57 @@ namespace Core.Storage
 
 
         /// <summary>
-       
+        /// Reads a file from Azure Blob Storage and returns its properties.
+        /// </summary>
+        /// <param name="fileName">The name of the file to be read.</param>
+        /// <returns>A dictionary containing the file's properties such as last modified time, path, size, and file format.</returns>
+        public async Task<Dictionary<string, object>?> ReadFile(string fileName, UrlRequestBase request)
+        {
+            // Initialize the result variable as null
+            Dictionary<string, object>? result = null;
+            try
+            {
+                // Get the BlobClient instance for the file
+                BlobClient blobClient = blobContainerClient.GetBlobClient(fileName.ToLower());
+
+                // Check if the file exists in the Blob Storage
+                bool fileExists = await blobClient.ExistsAsync();
+
+                // Get the download endpoint from the app settings configuration file
+                string? downloadEndpoint = Ihelpers.Helpers.ConfigurationHelper.GetConfig("DefaultConfigs:ReportsEndpoint");
+                if (downloadEndpoint == null)
+                {
+                    // Throw an exception if the download endpoint is not found
+                    throw new Exception("Reports Endpoint configuration not found on app settings file");
+                }
+
+                if (fileExists)
+                {
+                    // Get the last modified time of the file
+                    var lastModified = blobClient.GetProperties().Value.LastModified.UtcDateTime;
+
+                    // Initialize the result dictionary with the file properties
+                    result = new Dictionary<string, object>
+            {
+                { "lastModified", lastModified },
+                { "path", blobClient.Uri + "?lastModified=" + System.Web.HttpUtility.UrlEncode(lastModified.ToString()) },
+                { "size", blobClient.GetProperties().Value.ContentLength },
+                { "fileFormat", fileName.Split('.')[1] }
+            };
+
+                    // Return the result dictionary
+                    return result;
+                }
+            }
+            catch (Exception ex)
+            {
+                // Handle the exception and log the error message
+                ExceptionBase.HandleException(ex, $"Error reading {fileName} from azure storage");
+            }
+
+            // Return the result
+            return result;
+        }
         /// <summary>
         /// Downloads the specified file from the Blob storage.
         /// </summary>
@@ -158,9 +198,8 @@ namespace Core.Storage
         public async Task<bool> RemoveFile(string fileName)
         {
 
-            if (fileName.Contains("http"))
-            {
-                fileName = fileName.Replace(blobContainerClient.Uri.ToString(), "");
+            if (fileName.Contains("http")) {
+                fileName = fileName.Replace(blobContainerClient.Uri.ToString(),"");
             }
             // Get a reference to the blob client for the specified file
             BlobClient blobClient = blobContainerClient.GetBlobClient((fileName));
@@ -183,7 +222,7 @@ namespace Core.Storage
             {
 
                 await blobClient.DeleteIfExistsAsync();
-
+           
 
                 // Return the memory stream
                 //return true;
@@ -204,15 +243,14 @@ namespace Core.Storage
         public async Task<List<Dictionary<string, object>>> GetAllUserFiles(string userId, UrlRequestBase requestBase)
         {
             var reportFormats = Ihelpers.Helpers.ConfigurationHelper.GetConfig<string[]>("DefaultConfigs:ReportFormats");
-
             var response = new List<Dictionary<string, object>>();
 
-            string prefix = $"user={userId}";
+            string prefix = $"user={userId}/{requestBase.filename.ToLower()}";
 
-
+            
             await foreach (BlobItem blobItem in blobContainerClient.GetBlobsAsync(prefix: prefix))
             {
-
+              
                 bool isValidFormat = reportFormats.Any(format => blobItem.Name.EndsWith(format, StringComparison.OrdinalIgnoreCase));
 
                 if (isValidFormat)
@@ -226,7 +264,7 @@ namespace Core.Storage
                         { "lastModified", lastModified },
                         { "path", $"{blobUri}?lastModified={System.Web.HttpUtility.UrlEncode(lastModified.ToString())}" },
                         { "size", blobItem.Properties.ContentLength },
-                        { "fileFormat", blobItem.Name.Split('.').Last() },
+                        { "fileFormat", blobItem.Name.Split('.').Last() }, 
                         { "fileName", blobItem.Name }
                     };
 
@@ -235,6 +273,16 @@ namespace Core.Storage
             }
 
             return response;
+        }
+
+        public Task<bool> UpdateFile(string fileName, UrlRequestBase requestBase)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<bool> RemoveFile(string publicKey, UrlRequestBase request)
+        {
+            throw new NotImplementedException();
         }
     }
 }

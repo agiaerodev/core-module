@@ -2,6 +2,6 @@
 {
     public interface IReportingService
     {
-        public Task<string> GenerateExcelFile(string url);
+        public Task<string> GenerateExcelFile(string url, UrlRequestBase requestBase);
     }
 }

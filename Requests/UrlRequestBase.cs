@@ -172,7 +172,6 @@ namespace Core
 
 
 
-
         #region Setters
         /// <summary>
         /// Gets or sets the value of `internalSettings`. If a value is passed as an argument, it will set the value of `internalSettings` to that value.
@@ -418,10 +417,6 @@ namespace Core
                             case "restore":
                                 permission += ".restore";
                                 userActionName = "restore";
-                                break;
-                            case "order":
-                                permission += ".order";
-                                userActionName = "order";
                                 break;
                             case "export":
                                 permission += ".export";
@@ -1159,6 +1154,62 @@ namespace Core
 
             return finalTimezone;
 
+        }
+
+
+        public string GetFilters()
+        {
+            return internalFilter?.ToString();
+        }
+
+        public void CreateFilter(string fieldName, string fieldValue)
+        {
+            var field = GetFilter(fieldName);
+
+            if (string.IsNullOrEmpty(field) || (field == "id" && fieldName != "id"))
+            {
+                if(internalFilter == null) 
+                { 
+                    internalFilter = JObject.FromObject(new());
+                
+                }
+                internalFilter[fieldName] = fieldValue;
+            }
+
+        }
+        public void CreateFilter(string fieldName, JObject fieldValue)
+        {
+            var field = GetFilter(fieldName);
+
+            if (string.IsNullOrEmpty(field) || (field == "id" && fieldName != "id"))
+            {
+                if (internalFilter == null)
+                {
+                    internalFilter = JObject.FromObject(new());
+
+                }
+                internalFilter[fieldName] = fieldValue;
+            }
+
+        }
+        public bool RemoveFilter(string filterKey)
+        {
+            
+            if (internalFilter == null)
+            {
+                return false;
+            }
+
+            // Try to work with it as a JObject
+            if (internalFilter is JObject jObject)
+            {
+                // JObject.Remove() safely removes a property by its key
+                // and returns true if the property was found and removed.
+                return jObject.Remove(filterKey);
+            }
+
+            // If internalFilter is not a JObject, we can't remove a key from it.
+            return false;
         }
 
     }

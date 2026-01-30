@@ -19,7 +19,7 @@ namespace Core.Services
             _httpClient = httpClient;
         }
 
-        public async Task<string> GenerateExcelFile(string url) {
+        public async Task<string> GenerateExcelFile(string url, UrlRequestBase requestBase) {
             string responseString = "";
             var baseEndpoint = ConfigurationHelper.GetConfig<string>("FileGeneratorService:Endpoint");
             try
@@ -27,8 +27,8 @@ namespace Core.Services
                 if (baseEndpoint != null) {
                 var body = new
                 {
-                    url = HttpUtility.UrlDecode(url)
-
+                    url = HttpUtility.UrlDecode(url),
+                    token = requestBase.currentContextToken
                 };
 
                 var content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
