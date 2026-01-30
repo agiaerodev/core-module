@@ -72,6 +72,12 @@ namespace Core
         public string? procedureName { get; set; } = "";
 
         /// <summary>
+        /// A property to store the view path for custom reports
+        /// </summary>
+        [BindNever]
+        public string? reportViewPath { get; set; } = null;
+
+        /// <summary>
         /// A property to store the ordering field, used inside reports module.
         /// </summary>
         [BindNever]
@@ -162,6 +168,7 @@ namespace Core
         /// A property that indicates if the user timezone should be used.
         /// </summary>
         private bool useUserTimezone = true;
+
 
 
 
