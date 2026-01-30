@@ -357,9 +357,21 @@ namespace Core.Transformers
                 string propertyName = await ConfigContainer.cache.GetValue<string>($"{objName}.{prop.Name}.CamelCase");
                 if (propertyName == null)
                 {
-                    propertyName = StringHelper.ToCamelCase(prop.Name);
+                        propertyName = StringHelper.ToCamelCase(prop.Name);
+
+                
+                }
+
+                var apiNameAttr = (ApiName)(attrs.Where(att => att != null && att is ApiName && att is IDataAnnotationBase).FirstOrDefault());
+
+
+                if (!string.IsNullOrEmpty(apiNameAttr?._label))
+                {
+                    propertyName = StringHelper.ToCamelCase(apiNameAttr._label);
                     await ConfigContainer.cache.CreateValue($"{objName}.{prop.Name}.CamelCase", propertyName, 999999999);
                 }
+                    
+
                 //get the property value
                 dynamic? value = await ClassHelper.GetValObjDy(objectToTransform, prop.Name);
 
@@ -399,8 +411,11 @@ namespace Core.Transformers
                     continue;
 
                 }
+
+                var apiName = attrs.Where(att => att is ApiName).FirstOrDefault() != null;
+
                 //if the property doesn't have data anotation transform it to camel case by default
-                if ((attrs.Length == 0 && propertyName != "translations") || value == null)
+                if ((attrs.Length == 0 && propertyName != "translations") || value == null || apiName)
                 {
                     //Add the property name and value to the dictionary
                     dic.Add(propertyName, value);
@@ -408,6 +423,8 @@ namespace Core.Transformers
                     // Continue to the next iteration
                     continue;
                 }
+
+
 
 
                 //When transforming to front hide the password property
@@ -418,6 +435,7 @@ namespace Core.Transformers
                     dic.Add(propertyName, "***");
                     continue;
                 }
+
 
 
 

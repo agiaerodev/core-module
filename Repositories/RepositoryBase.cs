@@ -544,6 +544,15 @@ namespace Core.Repositories
         }
 
         /// <summary>
+        /// Allows to child repositories to provide a custom view model for report generation.
+        /// If null, the default model will be used.
+        /// </summary>
+        protected virtual async Task<object?> GetCustomReportViewModel(List<TEntity?> resultList, UrlRequestBase requestBase)
+        {
+            return await Task.FromResult<object?>(null);
+        }
+
+        /// <summary>
         /// Get an entity, taking in count filters sent inside requestBase
         /// </summary>
         /// <param name="requestBase">Standard request that holds filters and pagination configuration for this method</param>
@@ -967,6 +976,165 @@ namespace Core.Repositories
             
 
             return common;
+        }
+
+
+        /// <summary>
+        /// Bulk updates the numeric ordering field for many entities.
+        /// Frontend sends a map where key = position (0..N) and value = entity id.
+        /// Example: { "attributes": { "0": 15, "1": 14 } } => id=15 gets order=0, id=14 gets order=1.
+        /// </summary>
+        /// <param name="requestBase">Standard request that holds filters for this method</param>
+        /// <param name="bodyRequestBase">Standard request that holds ordering payload inside _attributes</param>
+        /// <returns>Returns a summary object (updated count, ids), or throws ExceptionBase on failures</returns>
+        public virtual async Task<object?> OrderBy(UrlRequestBase? requestBase, BodyRequestBase? bodyRequestBase)
+        {
+            Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction? transaction = null;
+
+            requestBase.setCurrentContextUser(_contextUser);
+
+            try
+            {
+                transaction = await _dataContext.Database.BeginTransactionAsync();
+
+                if (bodyRequestBase == null || string.IsNullOrWhiteSpace(bodyRequestBase._attributes))
+                    throw new ExceptionBase("Body is required", 400);
+
+                // Parse payload
+                var attributesToken = JObject.Parse(bodyRequestBase._attributes);
+
+
+                // Which entity field stores the ordering number?
+                // Option: allow overriding via query ?orderField=sort_order
+                var orderField = requestBase.GetFilter("orderField");
+                if (string.IsNullOrWhiteSpace(orderField) || orderField == "id")
+                    if (string.IsNullOrWhiteSpace(_entity.sorted_by)) orderField = "sort_order";
+                    else orderField = _entity.sorted_by;
+
+                var objectProperties = _entity.GetType().GetProperties();
+
+                bool fieldExist = false;
+                foreach (System.Reflection.PropertyInfo? prop in objectProperties)
+                {
+                    if(prop.Name == orderField) fieldExist = true;
+                }
+                if (!fieldExist)
+                    throw new ExceptionBase($"Entity {_entityType} doesn't contain any order column named {orderField}", 400);
+
+                // Build map: id -> order
+                // attributes: { "0": 15, "1": 14 } => idToOrder[15]=0, idToOrder[14]=1
+                var idToOrder = new Dictionary<long?, int>();
+                var duplicatedIds = new HashSet<long?>();
+
+                foreach (var prop in attributesToken.Properties())
+                {
+                    if (!int.TryParse(prop.Name, out var order))
+                        throw new ExceptionBase($"Invalid order key '{prop.Name}'. Keys must be numeric (0..N).", 400);
+
+                    var id = prop.Value?.ToObject<long?>();
+
+                    if (id == null)
+                        throw new ExceptionBase($"Invalid id for order '{prop.Name}'. Value must be a number.", 400);
+
+                    if (idToOrder.ContainsKey(id.Value))
+                        duplicatedIds.Add(id.Value);
+
+                    idToOrder[id.Value] = order;
+                }
+
+                if (idToOrder.Count == 0)
+                    throw new ExceptionBase("Attributes map is empty.", 400);
+
+                if (duplicatedIds.Count > 0)
+                    throw new ExceptionBase($"Duplicate ids in payload: {string.Join(",", duplicatedIds)}", 400);
+
+                // Fetch all entities in one query
+                var ids = idToOrder.Keys.ToList();
+
+                var entities = await _dbSet
+                    .Where(e => ids.Contains(EF.Property<long>(e, "id")))
+                    .ToListAsync();
+
+                if (entities.Count != ids.Count)
+                {
+                    var foundIds = entities.Select(e => EF.Property<long?>(e, "id")).ToHashSet();
+                    var missing = ids.Where(i => !foundIds.Contains(i)).ToList();
+                    throw new ExceptionBase($"Some items were not found: {string.Join(",", missing)}", 404);
+                }
+
+                // Apply updates
+                foreach (var entity in entities)
+                {
+                    long? entityId = entity.id;
+                    var newOrder = idToOrder[entityId];
+
+                    // update ordering field
+                    _dataContext.Entry(entity).Property(orderField).CurrentValue = newOrder;
+
+                    // audit fields (optional)
+                    try
+                    {
+                        _dataContext.Entry(entity).Property("updated_by").CurrentValue =
+                            requestBase.currentContextUser?.id ?? _contextUser?.id;
+                    }
+                    catch { }
+
+                    try
+                    {
+                        _dataContext.Entry(entity).Property("updated_at").CurrentValue = DateTime.UtcNow;
+                    }
+                    catch { }
+                }
+
+                // Fire "is updating" events (optional)
+                if (_dependenciesContainer._eventHandler != null)
+                {
+                    foreach (var entity in entities)
+                        (_dependenciesContainer._eventHandler.getEventBase()).FireEntityIsUpdating(entity);
+                }
+
+                await _dataContext.SaveChangesAsync(CancellationToken.None);
+                await transaction.CommitAsync();
+
+                // Logs + events after commit
+                Task.Factory.StartNew(() =>
+                    LogAction($"has bulk-ordered: {typeof(TEntity).Name}, count: {entities.Count}", logType: LogType.Information, requestBase: requestBase)
+                );
+
+                if (_dependenciesContainer._eventHandler != null)
+                {
+                    foreach (var entity in entities)
+                        (_dependenciesContainer._eventHandler.getEventBase()).FireEntityWasUpdated(entity);
+                }
+
+                await ClearCache(requestBase);
+
+                Task.Factory.StartNew(() =>
+                    _dependenciesContainer._messageProvider?.SendMessageAsync(
+                        $"{JsonConvert.SerializeObject(new { type = "order", entity = $"{typeof(TEntity).FullName}", orderField, ids })} ",
+                        "platform.event.crud"
+                    )
+                );
+
+                // Return summary
+                return new
+                {
+                    updated = entities.Count,
+                    orderField
+                };
+            }
+            catch (Exception ex)
+            {
+                ExceptionBase.HandleException(
+                    ex,
+                    $"Error ordering {typeof(TEntity).Name}",
+                    $"ExceptionMessage = {(ex is ExceptionBase ? ((ExceptionBase)ex).CustomMessage : ex.Message)}   trace received: " +
+                    JsonConvert.SerializeObject(bodyRequestBase?._attributes, jsonSerializerSettings).Trim().Replace("\"", "'"),
+                    transaction
+                );
+            }
+
+            return null;
         }
 
         /// <summary>

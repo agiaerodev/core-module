@@ -270,6 +270,43 @@ namespace Core.Controllers
             return StatusCode(status, await ResponseBase.Response(response));
         }
 
+        /// <summary>
+        /// The Order action performs a bulk update of items order based on a numeric ordering sent by the frontend.
+        /// It parses query/body, forwards the payload to the repository, and returns 200 or an exception response.
+        /// </summary>
+        /// <param name="urlRequestBase">The URL request object used to filter/target the items.</param>
+        /// <param name="bodyRequestBase">The body request object containing the ordering payload.</param>
+        /// <returns>200 OK if the bulk order update succeeds; otherwise an error response.</returns>
+        [HttpPut("order")]
+        public virtual async Task<IActionResult> Order([FromQuery] UrlRequestBase? urlRequestBase, [FromBody] BodyRequestBase? bodyRequestBase)
+        {
+            object? response = null;
+            int status = 200;
+
+            try
+            {
+                // Parse query params (same pattern as Update)
+                await urlRequestBase.Parse(this);
+
+                // Parse body payload (same pattern as Update)
+                await bodyRequestBase.Parse();
+
+                // Forward payload "as-is" to repository (bulk order update)
+                // IMPORTANT: implement this method in your repository layer.
+                response = await _repositoryBase.OrderBy(urlRequestBase, bodyRequestBase);
+
+      
+            }
+            catch (ExceptionBase ex)
+            {
+                return StatusCode(ex.CodeResult, ex.CreateResponseFromException());
+            }
+
+            return StatusCode(status, await ResponseBase.Response(response));
+
+        }
+
+
 
         /// <summary>
         /// Deletes a record from the database based on the criteria provided in the URL request.

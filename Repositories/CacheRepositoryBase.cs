@@ -162,5 +162,11 @@ namespace Core.Repositories
         {
             throw new NotImplementedException();
         }
+
+        public async Task<object?> OrderBy(UrlRequestBase? requestBase, BodyRequestBase? bodyRequestBase)
+        {
+            await _cacheBase.Clear(new List<string>() { _entityType?.FullName });
+            return _repositoryBase.OrderBy(requestBase, bodyRequestBase);
+        }
     }
 }

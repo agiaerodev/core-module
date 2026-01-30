@@ -6,9 +6,12 @@ using Core.Interfaces;
 using Core.Middleware.TokenManager.Interfaces;
 using Core.Repositories;
 using Core.Services;
+using Core.Services;
+using Core.Services.Interfaces;
 using Core.Services.Interfaces;
 using Core.Storage;
 using Core.Storage.Interfaces;
+using Core.SyncHandlers.Messages;
 using Hangfire;
 using Idata.Data;
 using Ihelpers.Caching;
@@ -21,8 +24,7 @@ using Ihelpers.Middleware.TokenManager;
 using Ihelpers.Middleware.TokenManager.Middleware;
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
-using Core.Services;
-using Core.Services.Interfaces;
+using Newtonsoft.Json.Linq;
 
 
 namespace Core
@@ -80,16 +82,16 @@ namespace Core
             }
 
             //Messaging between modules DEFAULT
-            builder.Services.AddSingleton<IMessageProvider, MessageProvider>();
+            builder.Services.AddSingleton<IMessageProvider, AzureServiceBus>();
 
 
             //File report storage DEFAULT
-            builder.Services.AddScoped<IStorageBase, DefaultStorage>();
+            builder.Services.AddScoped<IStorageBase, AzureStorageBase>();
 
             // Add token black list handling services
             builder.Services.AddTransient<TokenManagerMiddleware>();
             builder.Services.AddTransient<ITokenManager, DatabaseJsonWebTokenManager>();
-
+            builder.Services.AddScoped<UniversalDispatcher>();
             // Get the connection string from the configuration
             var connectionString = ConfigurationHelper.GetConfig("ConnectionStrings:DefaultConnection");
 
