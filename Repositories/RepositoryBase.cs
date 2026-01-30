@@ -358,7 +358,7 @@ namespace Core.Repositories
                 else if (fileFormat == "pdf")
                 {
 
-
+             
 
                     #region PDF
                     string viewToRender = !string.IsNullOrEmpty(requestBase.reportViewPath)
@@ -386,8 +386,8 @@ namespace Core.Repositories
                         result = await TransformerBase.GetCSVReport<TEntity>(transformedItems, pathFields);
 
                     }
-                  
-                    html =  await RazorTemplateEngine.RenderAsync(viewToRender, customViewModel??result);
+
+                    html =  await RazorTemplateEngine.RenderAsync(viewToRender, customViewModel ?? result);
 
                     int ammountItems = resultList.Count();
 
@@ -440,13 +440,12 @@ namespace Core.Repositories
                 {
                     object? customViewModel = await GetCustomReportViewModel(resultList, requestBase);
 
-
+				
                     #region EXCEL
                     //EXCEL part
                     string viewToRender = !string.IsNullOrEmpty(requestBase.reportViewPath)
                    ? requestBase.reportViewPath
                    : "~/Views/CSVReport.cshtml";
-
 
 
 
@@ -532,15 +531,6 @@ namespace Core.Repositories
                 ExceptionBase.HandleException(ex, $"Error obtaining list of {typeof(TEntity).Name}", $"ExceptionMessage = {(ex is ExceptionBase ? ((ExceptionBase)ex).CustomMessage : ex.Message)}   trace received: " + JsonConvert.SerializeObject(requestBase, jsonSerializerSettings).Trim().Replace("\"", "'"));
             }
 
-        }
-
-        /// <summary>
-        /// Allows to child repositories to provide a custom view model for report generation.
-        /// If null, the default model will be used.
-        /// </summary>
-        protected virtual async Task<object?> GetCustomReportViewModel(List<TEntity?> resultList, UrlRequestBase requestBase)
-        {
-            return await Task.FromResult<object?>(null);
         }
 
         /// <summary>
