@@ -236,7 +236,7 @@ namespace Core.Repositories
             }
 
             return resultList;
-        } 
+        }
 
         /// <summary>
         /// Create a report for any entity that inherits from EntityBase, taking in count pagination and filters from requestBase  and configuration sent inside bodyRequestBase.exportParams property
@@ -262,8 +262,8 @@ namespace Core.Repositories
                 requestBase.doNotCheckPermissions();
                 await requestBase.Parse();
 
-     
-               resultList = await GetItemsBy(requestBase);
+
+                resultList = await GetItemsBy(requestBase);
 
 
 
@@ -314,8 +314,8 @@ namespace Core.Repositories
                         string sql = $"{procedureName}";
 
                         var csvDict = await EntityFrameworkCoreHelper.FromSqlQueryToDictionary(
-                            (DatabaseFacade)_dataContext.Database, 
-                            sql, 
+                            (DatabaseFacade)_dataContext.Database,
+                            sql,
                             System.Data.CommandType.StoredProcedure,
                             paramsSP).SingleAsync();
 
@@ -325,13 +325,13 @@ namespace Core.Repositories
 
                             Stream csvStream = _classHelper.GenerateStreamFromString(csvText);
 
-                          //  fileName += ".csv";
+                            //  fileName += ".csv";
 
                             //Upload the file to storage handler
                             fileUrl = await _storageBase.CreateFile(fileName, csvStream, requestBase);
 
 
-                         
+
                         }
                         else
                         {
@@ -351,28 +351,49 @@ namespace Core.Repositories
                         //Upload the file to storage handler
                         fileUrl = await _storageBase.CreateFile(fileName, csvStream, requestBase);
 
-                        
+
                     }
 
                 }
-                else if(fileFormat == "pdf")
+                else if (fileFormat == "pdf")
                 {
 
-                    //CONVERT RESULTS TO FIRST LVL 
-                    var transformedItems = await TransformerBase.TransformCollection(resultList);
 
-                    var pathFields = resultList.GetPropertiesPath();
-                    
-                    //Add all non relation properties to pathfields
-
-                    string result = await TransformerBase.GetCSVReport<TEntity>(transformedItems, pathFields);
 
                     #region PDF
+                    string viewToRender = !string.IsNullOrEmpty(requestBase.reportViewPath)
+                      ? requestBase.reportViewPath
+                      : "~/Views/CSVReport.cshtml";
+
+                    object? customViewModel = await GetCustomReportViewModel(resultList, requestBase);
+
+
+
+                    string html = string.Empty;
                     //PDF par
-                    var html = await RazorTemplateEngine.RenderAsync("~/CSVReport/CSVReport.cshtml", result);
+
+                    if (customViewModel != null)
+                    {
+
+                        html = await RazorTemplateEngine.RenderAsync(viewToRender, customViewModel);
+                    }
+                    else
+                    {
+                        //CONVERT RESULTS TO FIRST LVL 
+                        var transformedItems = await TransformerBase.TransformCollection(resultList);
+
+                        var pathFields = resultList.GetPropertiesPath();
+
+                        //Add all non relation properties to pathfields
+
+                        string result = await TransformerBase.GetCSVReport<TEntity>(transformedItems, pathFields);
+
+                        html = await RazorTemplateEngine.RenderAsync(viewToRender, result);
+                    }
 
 
-					int ammountItems = resultList.Count();
+
+                    int ammountItems = resultList.Count();
 
                     resultList.Clear();
 
@@ -404,49 +425,74 @@ namespace Core.Repositories
                                 MarginRight = "50",
                                 Landscape = true,
                             }
-                           
+
                         }
                     });
 
-					#endregion
+                    #endregion
 
 
 
-					//fileName = fileName += $".{fileFormat}";
+                    //fileName = fileName += $".{fileFormat}";
 
-					//Upload the file to storage handler
-					fileUrl = await _storageBase.CreateFile("testing.pdf", generatedPdf.Content, requestBase);
+                    //Upload the file to storage handler
+                    fileUrl = await _storageBase.CreateFile("testing.pdf", generatedPdf.Content, requestBase);
 
 
                 }
                 else
                 {
-					//CONVERT RESULTS TO FIRST LVL 
-					var transformedItems = await TransformerBase.TransformCollection(resultList);
+                    object? customViewModel = await GetCustomReportViewModel(resultList, requestBase);
 
-					var pathFields = resultList.GetPropertiesPath();
 
-					//Add all non relation properties to pathfields
+                    #region EXCEL
+                    //EXCEL part
+                    string viewToRender = !string.IsNullOrEmpty(requestBase.reportViewPath)
+                   ? requestBase.reportViewPath
+                   : "~/Views/CSVReport.cshtml";
 
-					string result = await TransformerBase.GetCSVReport<TEntity>(transformedItems, pathFields);
 
-					#region EXCEL
-					//EXCEL part
-					var html = await RazorTemplateEngine.RenderAsync("~/CSVReport/CSVReport.cshtml", result);
+
+                    string html = string.Empty;
+
+
+                    //PDF par
+
+                    if (customViewModel != null)
+                    {
+
+                        html = await RazorTemplateEngine.RenderAsync(viewToRender, customViewModel);
+                    }
+                    else
+                    {
+                        //CONVERT RESULTS TO FIRST LVL 
+                        var transformedItems = await TransformerBase.TransformCollection(resultList);
+
+                        var pathFields = resultList.GetPropertiesPath();
+
+                        //Add all non relation properties to pathfields
+
+                        string result = await TransformerBase.GetCSVReport<TEntity>(transformedItems, pathFields);
+
+                        html = await RazorTemplateEngine.RenderAsync(viewToRender, result);
+                    }
+
+
+
                     //Extract only the table HTML
                     string table = html.Split("<body>").Last().Split("</body>").First().Trim();
 
-					int ammountItems = resultList.Count();
+                    int ammountItems = resultList.Count();
 
-					resultList.Clear();
+                    resultList.Clear();
 
 
 
-					string? url = Ihelpers.Helpers.ConfigurationHelper.GetConfig<string>("JsReportingServices:Url");
+                    string? url = Ihelpers.Helpers.ConfigurationHelper.GetConfig<string>("JsReportingServices:Url");
 
-					string? userName = Ihelpers.Helpers.ConfigurationHelper.GetConfig<string>("JsReportingServices:UserName");
+                    string? userName = Ihelpers.Helpers.ConfigurationHelper.GetConfig<string>("JsReportingServices:UserName");
 
-					string? password = Ihelpers.Helpers.ConfigurationHelper.GetConfig<string>("JsReportingServices:Password");
+                    string? password = Ihelpers.Helpers.ConfigurationHelper.GetConfig<string>("JsReportingServices:Password");
 
 
                     var rs = new ReportingService(url, userName, password);
@@ -460,21 +506,23 @@ namespace Core.Repositories
 
                             Engine = Engine.JsRender,
                             Content = table,
-                            
-                        }, Options = new RenderOptions
+
+                        },
+                        Options = new RenderOptions
                         {
-                          Timeout = 10000000
+                            Timeout = 10000000
                         }
-                    }); 
+                    });
 
-					#endregion
+                    #endregion
 
-					//Upload the file to storage handler
-					fileUrl = await _storageBase.CreateFile("testing.xlsx", generatedPdf.Content, requestBase);
+                    //Upload the file to storage handler
+                    fileUrl = await _storageBase.CreateFile("testing.xlsx", generatedPdf.Content, requestBase);
 
                 }
 
-                if (fileFormat == "csv" && !string.IsNullOrEmpty(fileUrl)) {
+                if (fileFormat == "csv" && !string.IsNullOrEmpty(fileUrl))
+                {
                     fileUrl = await _dependenciesContainer._reportingService.GenerateExcelFile(fileUrl);
                 }
 
@@ -493,6 +541,15 @@ namespace Core.Repositories
                 ExceptionBase.HandleException(ex, $"Error obtaining list of {typeof(TEntity).Name}", $"ExceptionMessage = {(ex is ExceptionBase ? ((ExceptionBase)ex).CustomMessage : ex.Message)}   trace received: " + JsonConvert.SerializeObject(requestBase, jsonSerializerSettings).Trim().Replace("\"", "'"));
             }
 
+        }
+
+        /// <summary>
+        /// Allows to child repositories to provide a custom view model for report generation.
+        /// If null, the default model will be used.
+        /// </summary>
+        protected virtual async Task<object?> GetCustomReportViewModel(List<TEntity?> resultList, UrlRequestBase requestBase)
+        {
+            return await Task.FromResult<object?>(null);
         }
 
         /// <summary>
