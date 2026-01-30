@@ -645,7 +645,7 @@ namespace Core
                 settings[settingName] = tokenValue;
                 this.filter = settings.ToString();
             }
-
+            this.internalFilter = JObjectHelper.JTokenParseOrNull(filter);
             return true;
         }
 

@@ -258,7 +258,7 @@ namespace Core.Repositories
                 requestBase.selectDefaultIncludes = false;
 
                 //setting filters
-                requestBase.filter = bodyRequestBase.filter != null ? bodyRequestBase.filter.ToString() : null;
+                requestBase.filter = bodyRequestBase.filter != null ? bodyRequestBase.filter.ToString() : (requestBase.filter != null ? requestBase.filter : null);
                 requestBase.doNotCheckPermissions();
                 await requestBase.Parse();
 
@@ -275,6 +275,8 @@ namespace Core.Repositories
                 string[]? headings = JObjectHelper.GetJObjectValue<string[]?>(bodyRequestBase.exportParams, "headings");
 
                 string? fileFormat = JObjectHelper.GetJObjectValue<string>(bodyRequestBase.exportParams, "fileFormat");
+                
+                string? fileName = JObjectHelper.GetJObjectValue(bodyRequestBase.exportParams, "fileName").ToString() + $"{requestBase.currentContextUser.id}";
 
                 string? fileUrl = null;
 
@@ -289,8 +291,7 @@ namespace Core.Repositories
                     bool procedureExists = await Ihelpers.Helpers.EntityFrameworkCoreHelper.StoredProcedureExists((DatabaseFacade)_dataContext.Database, $"{procedureName}");
 
                     //Get the filename from exportparams
-                    string? fileName = JObjectHelper.GetJObjectValue(bodyRequestBase.exportParams, "fileName").ToString() + $"{requestBase.currentContextUser.id}";
-
+                  
                     LogAction($"Begin with csv report creation for Entity: {typeof(TEntity).Name}, FileName: {fileName}", logType: LogType.Information, requestBase: requestBase);
 
                     fileName = (string.IsNullOrEmpty(fileFormat) || fileFormat == "csv") ? fileName += ".csv" : fileName += $".{fileFormat}";
@@ -429,10 +430,10 @@ namespace Core.Repositories
 
 
 
-                    //fileName = fileName += $".{fileFormat}";
-
+                    fileName = fileName += $".{fileFormat}";
+             
                     //Upload the file to storage handler
-                    fileUrl = await _storageBase.CreateFile("testing.pdf", generatedPdf.Content, requestBase);
+                    fileUrl = await _storageBase.CreateFile(fileName, generatedPdf.Content, requestBase);
 
 
                 }
