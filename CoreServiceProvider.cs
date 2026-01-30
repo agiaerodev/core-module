@@ -21,8 +21,6 @@ using Ihelpers.Middleware.TokenManager;
 using Ihelpers.Middleware.TokenManager.Middleware;
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
-using Core.Services;
-using Core.Services.Interfaces;
 
 
 namespace Core
